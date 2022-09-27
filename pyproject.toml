@@ -1,0 +1,25 @@
+[tool.poetry]
+name = "cbbm"
+version = "0.1.0"
+description = ""
+authors = ["maxielias <maximilianocoltro@gmail.com>"]
+
+[tool.poetry.dependencies]
+numpy = "^1.23.1"
+pip = "^22.2"
+python = ">=3.10,<3.11"
+pandas = "^1.4.3"
+jupyterlab = "^3.4.4"
+openpyxl = "^3.0.10"
+matplotlib = "^3.5.2"
+seaborn = "^0.11.2"
+scikit-learn = "^1.1.1"
+scikit-learn-extra = "^0.2.0"
+
+[tool.poetry.dev-dependencies]
+pytest = "^5.2"
+ipykernel = "^6.15.1"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
