@@ -1,3 +1,2 @@
 ignore/
-data/dbo_Men_EvolDatos.txt
-data/dbo_Men_EvolResul.txt
+*.txt
