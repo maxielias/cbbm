@@ -18,6 +18,7 @@ scikit-learn-extra = "^0.2.0"
 pyclustering = "^0.10.1"
 pyopencl = "^2022.2.3"
 yellowbrick = "^1.5"
+kneed = "^0.8.1"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"

@@ -532,6 +532,22 @@ optional = false
 python-versions = ">=3.7"
 
 [[package]]
+name = "kneed"
+version = "0.8.1"
+description = "Knee-point detection in Python"
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+numpy = ">=1.14.2"
+scipy = ">=1.0.0"
+
+[package.extras]
+testing = ["matplotlib (>=2.2.5)", "pytest-cov (>=3.0.0)", "pytest (>=5.0.1)"]
+plot = ["matplotlib (>=2.2.5)"]
+
+[[package]]
 name = "markupsafe"
 version = "2.1.1"
 description = "Safely add untrusted strings to HTML/XML markup."
@@ -1352,7 +1368,7 @@ scipy = ">=1.0.0"
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.10,<3.11"
-content-hash = "4b810fc792862404b39d575545233e0c273347bb35ab24691b058bf8713bf181"
+content-hash = "f2bd3287cdfe70c6d9ee4909207823991d8d329a4bbac2e40a1b501db6a97a9a"
 
 [metadata.files]
 anyio = [
@@ -1651,6 +1667,10 @@ kiwisolver = [
     {file = "kiwisolver-1.4.4-pp37-pypy37_pp73-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:da152d8cdcab0e56e4f45eb08b9aea6455845ec83172092f09b0e077ece2cf7a"},
     {file = "kiwisolver-1.4.4-pp37-pypy37_pp73-win_amd64.whl", hash = "sha256:ecb1fa0db7bf4cff9dac752abb19505a233c7f16684c5826d1f11ebd9472b871"},
     {file = "kiwisolver-1.4.4.tar.gz", hash = "sha256:d41997519fcba4a1e46eb4a2fe31bc12f0ff957b2b81bac28db24744f333e955"},
+]
+kneed = [
+    {file = "kneed-0.8.1-py2.py3-none-any.whl", hash = "sha256:93db3e6cd4ca32b48cb6948b13a004359f04f7283803fac33b5605ff5c1ec970"},
+    {file = "kneed-0.8.1.tar.gz", hash = "sha256:6addebca6a3742e51a173f4f40f789c704677c49bc0b02666e7d71152ca0e473"},
 ]
 markupsafe = [
     {file = "MarkupSafe-2.1.1-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:86b1f75c4e7c2ac2ccdaec2b9022845dbb81880ca318bb7a0a01fbf7813e3812"},
