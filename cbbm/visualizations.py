@@ -56,3 +56,69 @@ def plot_pca_meshgrid(reduced_data, init, n_init, n_clusters):
     plt.xticks(())
     plt.yticks(())
     plt.show()
+
+
+def plot_3d(data, labels_col:str):
+    """
+    Plot in 3 dimensions
+    """
+    labels = [l for l in data.loc[:,labels_col]]
+    data_cols = [c for c in data.columns]
+
+    if len(data_cols) == 2:
+
+        print("Plotting 2 dimensions")
+        df_pca = data
+
+        fig = plt.figure() # figsize = (20, 14))
+
+    elif len(data_cols) == 3:
+        df_pca = data
+
+        fig = plt.figure() # figsize = (20, 14))
+        ax = plt.axes(projection ="3d")       
+
+    elif len(data_cols) > 3:
+
+        data_cols.remove(labels_col)
+        data = data.loc[:,data_cols].to_numpy()
+
+        df_pca = PCA(n_components=3).fit_transform(data)
+        df_ent = pd.DataFrame(labels, columns=[labels_col])
+        df_pca = pd.DataFrame(df_pca, columns=["pca1", "pca2", "pca3"])
+        df_pca = pd.concat([df_ent, df_pca], axis=1)
+
+        fig = plt.figure() # figsize = (20, 14))
+        ax = plt.axes(projection ="3d")
+
+    else:
+        print("Dimensional error")
+        return None
+
+    for k in range(len(df_pca)):
+
+        pca1 = df_pca["pca1"].loc[k]
+        pca2 = df_pca["pca2"].loc[k]
+        pca3 = df_pca["pca3"].loc[k]
+        label = df_pca[labels_col].loc[k]
+        
+        ax.plot(
+                    pca1,
+                    pca2,
+                    pca3,
+                    "o",
+                    markerfacecolor="red",
+                    markeredgecolor="black",
+                    markersize=10,
+                )
+
+        if len(data_cols) == 2:
+            ax.text(pca1, pca2, label, ha="center")
+
+        else:
+            ax.text(pca1, pca2, pca3, label, ha="center")
+
+    plt.title("PCA 3D (except if df dimensiones=2)", fontsize=10)
+    fig = plt.gcf()
+    plt.show()
+    fig.clf()

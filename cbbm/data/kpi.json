@@ -11,8 +11,11 @@
         {
             "n_acc": ["00000500000", "00000570110", "00000580110", "00000650000"],
             "sign": [1, -1, -1, 1]
-        }
-        
+        },
+
+        "details": "Net service revenue (as a % of total net income)",
+
+        "p": "3" 
     },
 
     "titles_assets":
@@ -27,8 +30,11 @@
         {
             "n_acc": ["10000000000"],
             "sign": [1]
-        }
-        
+        },
+
+        "details": "Public titles-securities (as a % of assets)",
+
+        "p": "3"  
     },
 
     "dep_cap_assets":
@@ -43,8 +49,11 @@
         {
             "n_acc": ["10000000000"],
             "sign": [1]
-        }
-        
+        },
+
+        "details": "Deposits net of interest (as a % of assets)",
+
+        "p": "1"   
     },
 
     "implied_liable_rate":
@@ -59,8 +68,11 @@
         {
             "n_acc": ["20100000000", "20110102000", "20110303010", "20110307000", "20120102000", "20120305000"],
             "sign": [1, -1, -1, -1, -1, -1]
-        }
+        },
         
+        "details": "Implied deposits interest rate (deposit interests / total deposits net of interest)",
+
+        "p": "1"   
     },
     
     "implied_lending_rate":
@@ -76,8 +88,11 @@
             "n_acc": ["10310102000", "10310103000", "10310106000", "10310108000", "10310201000", "10310203000", "10310204000",
                       "10310301000", "10320102000", "10320103000", "10320107000", "10320201000", "10320301000"],
             "sign": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-        }
+        },
         
+        "details": "Implied lending interest rate (loan interests / total loans net of interest)",
+
+        "p": "4"   
     },
     
     "implied_spread":
@@ -95,8 +110,11 @@
                       "10310301000", "10320102000", "10320103000", "10320107000", "10320201000", "10320301000",
                       "20100000000", "20110102000", "20110303010", "20110307000", "20120102000", "20120305000"],
             "sign": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, -1, 1, 1, 1, 1, 1]
-        }
+        },
         
+        "details": "Difference between implied lending interest rate and implied deposit rate",
+
+        "p": "4" 
     },
     
     "liquidity_ratio":
@@ -113,8 +131,11 @@
         {
             "n_acc": ["20100000000", "20110303010"],
             "sign": [1, -1]
-        }
-        
+        },
+
+        "details": "Liquidity ratio",
+
+        "p": "4"
     },
 
     "pers_cred_card_loans":
@@ -130,8 +151,11 @@
             "n_acc": ["10310102000", "10310103000", "10310106000", "10310108000", "10310201000", "10310203000", "10310204000",
                       "10310301000", "10320102000", "10320103000", "10320107000", "10320201000", "10320301000"],
             "sign": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-        }
-        
+        },
+
+        "details": "Personal and credit card loans (as a % of loans net of interest)",
+
+        "p": "1" 
     },
 
     "adv_curr_acc_disc_doc_loans":
@@ -148,8 +172,11 @@
             "n_acc": ["10310102000", "10310103000", "10310106000", "10310108000", "10310201000", "10310203000", "10310204000",
                       "10310301000", "10320102000", "10320103000", "10320107000", "10320201000", "10320301000"],
             "sign": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-        }
-        
+        },
+
+        "details": "Advances in checking accounts, discounted documents and other commercial loans",
+
+        "p": "1" 
     },
     
     "roe":
@@ -164,8 +191,11 @@
         {
             "n_acc": ["30000000000"],
             "sign": [1]
-        }
-        
+        },
+
+        "details": "Return on equity",
+
+        "p": "4"  
     },
     
     "net_worth_assets":
@@ -180,8 +210,11 @@
         {
             "n_acc": ["10000000000"],
             "sign": [1]
-        }
+        },
+
+        "details": "Equity (as a % of assets)",
         
+        "p": "3"  
     },
     
     "loans_cap_assets":
@@ -197,7 +230,11 @@
         {
             "n_acc": ["10000000000"],
             "sign": [1]
-        }
+        },
+
+        "details": "Loans net of interest (as a % of assets)",
+
+        "p": "2"
     },
     
     "loans_cap_to_banks_assets":
@@ -212,8 +249,11 @@
         {
             "n_acc": ["10000000000"],
             "sign": [1]
-        }
-        
+        },
+
+        "details": "Loans between banks (as a % of assets)",
+
+        "p": "2"
     },
     
     "deriv_assets":
@@ -229,8 +269,11 @@
         {
             "n_acc": ["10000000000"],
             "sign": [1]
-        }
-        
+        },
+
+        "details": "Derivatives (as a % of assets)",
+
+        "p": "2"
     },
     
     "net_int_inc_tot_income":
@@ -245,8 +288,11 @@
         {
             "n_acc": ["00000500000", "00000570110", "00000580110", "00000650000"],
             "sign": [1, -1, -1, 1]
-        }
-        
+        },
+
+        "details": "Net interest income (as a % of total net income)",
+
+        "p": "2"
     },
     
     "exp_dep_cap_loans":
@@ -264,8 +310,11 @@
                       "20100000000", "20110102000", "20110303010", "20110307000", "20120102000", "20120305000"],
             "sign": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                      1, -1, -1, -1, -1, -1]
-        }
-        
+        },
+
+        "details": "Expenses (as a % of total loans and deposits)",
+
+        "p": "4"
     },
     
     "asset_tot_asset":
@@ -280,8 +329,11 @@
         {
             "n_acc": ["10000000000_11111"],
             "sign": [1]
-        }
-        
+        },
+
+        "details": "Assets (as a % of total assets in the banking system)",
+
+        "p": "4"   
     },
     
     "loan_avg_segment_asset":
@@ -296,8 +348,68 @@
         {
             "n_acc": ["10000000000"],
             "sign": [1]
-        }
-        
+        },
+
+        "details": "Total wholesale debt (as a % of assets)",
+
+        "p": "2"
+    },
+    
+    "business_loans_assets":
+    {
+        "num": 
+        {
+            "n_acc": ["come"],
+            "sign": [1]
+        },
+
+        "den": 
+        {
+            "n_acc": ["10000000000"],
+            "sign": [1]
+        },
+
+        "details": "Business loans (as a % of assets)",
+
+        "p": "2"
+    },
+    
+    "consumer_loans_assets":
+    {
+        "num": 
+        {
+            "n_acc": ["cons"],
+            "sign": [1]
+        },
+
+        "den": 
+        {
+            "n_acc": ["10000000000"],
+            "sign": [1]
+        },
+
+        "details": "Consumer loans (as a % of assets)",
+
+        "p": "2"
+    },
+    
+    "exp_assets":
+    {
+        "num": 
+        {
+            "n_acc": ["00000560000"],
+            "sign": [1]
+        },
+
+        "den": 
+        {
+            "n_acc": ["10000000000"],
+            "sign": [1]
+        },
+
+        "details": "Expenses (as a % of total loans and deposits)",
+
+        "p": "4"
     }
 
 }

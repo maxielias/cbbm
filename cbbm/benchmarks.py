@@ -48,8 +48,10 @@ def find_and_drop_correlated_features(data, labels_col:str, threshold:float, dro
     
     if drop:
         data = pd.concat([df_labels, data[selected_columns]], axis=1)
+        print(f"The following columns were dropped: {[d for d in data_cols if d not in selected_columns]}")
 
     return df_corr, data
+
 
 def benchmark_scaling_and_oultlier_methods(data, labels_col:str, plot:bool=False) -> list:
     """
@@ -84,15 +86,15 @@ def benchmark_scaling_and_oultlier_methods(data, labels_col:str, plot:bool=False
 
     # More anomaly_algorithms can be added to be tested
     anomaly_algorithms = [
-        ("Empirical Covariance", EllipticEnvelope(support_fraction=1.0, contamination=0.2)),
-        ("Robust Covariance", EllipticEnvelope(contamination=0.2)),
-        ("One-Class SVM", svm.OneClassSVM(nu=0.2, kernel="rbf", gamma=0.1)),
+        ("Empirical Covariance", EllipticEnvelope(support_fraction=1.0, contamination=0.1)),
+        ("Robust Covariance", EllipticEnvelope(contamination=0.1)),
+        ("One-Class SVM", svm.OneClassSVM(nu=0.1, kernel="rbf", gamma=0.1)),
         (
             "One-Class SVM (SGD)",
             make_pipeline(
                 Nystroem(gamma=0.1, random_state=42, n_components=data.shape[1]),
                 SGDOneClassSVM(
-                    nu=0.2,
+                    nu=0.1,
                     shuffle=True,
                     fit_intercept=True,
                     random_state=42,
@@ -106,7 +108,7 @@ def benchmark_scaling_and_oultlier_methods(data, labels_col:str, plot:bool=False
         ),
         (
             "Local Outlier Factor",
-            LocalOutlierFactor(contamination=0.2, n_neighbors=30),
+            LocalOutlierFactor(contamination=0.1, n_neighbors=30),
         ),
         (
             "DBSCAN",
@@ -225,7 +227,7 @@ def benchmark_scaling_and_oultlier_methods(data, labels_col:str, plot:bool=False
     return scaling_and_outlier_methods_list
 
 
-def drop_outliers(data, labels_col:str, scaler:int, algorithm:int, params=None):
+def drop_outliers(data, labels_col:str, scaler:int, algorithm:int, drop:bool=True, params=None):
     """
     ----------------------------------------------------------------
     Drop outliers in a dataset.
@@ -275,15 +277,15 @@ def drop_outliers(data, labels_col:str, scaler:int, algorithm:int, params=None):
 
     # More anomaly_algorithms can be added to be tested
     anomaly_algorithms = [
-        ("Empirical Covariance", EllipticEnvelope(support_fraction=1.0, contamination=0.2)),
-        ("Robust Covariance", EllipticEnvelope(contamination=0.2)),
-        ("One-Class SVM", svm.OneClassSVM(nu=0.2, kernel="rbf", gamma=0.1)),
+        ("Empirical Covariance", EllipticEnvelope(support_fraction=1.0, contamination=0.1)),
+        ("Robust Covariance", EllipticEnvelope(contamination=0.1)),
+        ("One-Class SVM", svm.OneClassSVM(nu=0.1, kernel="rbf", gamma=0.1)),
         (
             "One-Class SVM (SGD)",
             make_pipeline(
                 Nystroem(gamma=0.1, random_state=42, n_components=data.shape[1]),
                 SGDOneClassSVM(
-                    nu=0.2,
+                    nu=0.1,
                     shuffle=True,
                     fit_intercept=True,
                     random_state=42,
@@ -297,7 +299,7 @@ def drop_outliers(data, labels_col:str, scaler:int, algorithm:int, params=None):
         ),
         (
             "Local Outlier Factor",
-            LocalOutlierFactor(contamination=0.2, n_neighbors=30),
+            LocalOutlierFactor(contamination=0.1, n_neighbors=30),
         ),
         (
             "DBSCAN",
@@ -305,13 +307,14 @@ def drop_outliers(data, labels_col:str, scaler:int, algorithm:int, params=None):
         )
     ]
 
-    scaler = scaling_methods[scaler-1][1]
+    if scaler>0:
+        scaler = scaling_methods[scaler-1][1]
+        # Scale the data
+        data = scaler.fit_transform(data)
+
     name, anomaly_algorithm = anomaly_algorithms[algorithm-1]
 
     print(scaler, name)
-
-    # Scale the data
-    data = scaler.fit_transform(data)
 
     # fit the data and tag outliers
     if name == "Local Outlier Factor":
@@ -327,7 +330,7 @@ def drop_outliers(data, labels_col:str, scaler:int, algorithm:int, params=None):
         x_idx = kneedle.knee
         eps = distances[x_idx]
         params = {
-            'min_samples': round(data.shape[0]*0.8), 
+            'min_samples': round(data.shape[0]*0.9), 
             'eps': eps,
         }
         anomaly_algorithm.set_params(**params)
@@ -337,12 +340,16 @@ def drop_outliers(data, labels_col:str, scaler:int, algorithm:int, params=None):
 
     
     inliers_list_idx = [i for i, e in enumerate(list(y_pred)) if e==1]
+    outliers_list_idx = [i for i, e in enumerate(list(y_pred)) if e==-1]
 
     df_data = pd.DataFrame(data, columns=data_cols)
     df_labels = pd.DataFrame(labels, columns=[labels_col])
     # df_pred = pd.DataFrame(list(y_pred), columns=["outlier"])
     df = pd.concat([df_labels, df_data], axis=1)
-    df = df.iloc[inliers_list_idx]
+    
+    if drop==True:
+        print(f"Droppped the following samples: {list(df[labels_col].iloc[outliers_list_idx])}")
+        df = df.iloc[inliers_list_idx]
 
     return df
 
@@ -402,6 +409,7 @@ def elbow_optimal_k(data, labels_col:str, model:str, params:dict, max_k:int, sca
         "adjusted_rand_score",
         "adjusted_mutual_info_score",
         "silhouette_score",
+        "silhouette_samples",
         "davies_bouldin_score",
         "calinski_harabasz_score"
     ]
@@ -453,6 +461,10 @@ def elbow_optimal_k(data, labels_col:str, model:str, params:dict, max_k:int, sca
                 estimator[-1].labels_,
                 metric="euclidean",
                 sample_size=300,
+            ),
+            metrics.silhouette_samples(
+                data,
+                estimator[-1].labels_
             )
         ]
 
@@ -472,123 +484,6 @@ def elbow_optimal_k(data, labels_col:str, model:str, params:dict, max_k:int, sca
 
         df_length = len(df)
         df.loc[df_length] = results
-
-    return df
-
-
-def bench_k_means(data, labels, n_clusters, scaler:int):
-    """Benchmark to evaluate the KMeans initialization methods.
-
-    Parameters
-    ----------
-    kmeans : KMeans instance
-        A :class:"~sklearn.cluster.KMeans" instance with the initialization
-        already set.
-    name : str
-        Name given to the strategy. It will be used to show the results in a
-        table.
-    data : ndarray of shape (n_samples, n_features)
-        The data to cluster.
-    labels : ndarray of shape (n_samples,)
-        The labels used to compute the clustering metrics which requires some
-        supervision.
-    scaler: name of scaler to use
-        Scalers are linear (or more precisely affine) and non linear transformers and differ 
-        from each other in the way they estimate the parameters used to shift and scale each feature.
-        1: StandardScaler
-        2: MinMaxScaler
-        3: MaxAbsScaler
-        4: RobustScaler
-        5: PowerTransformer
-        6: QuantileTransformer (uniform output)
-        7: Normalizer
-    """
-    t0 = time()
-    
-    # Define list of scaling options
-    scaler_list = [StandardScaler(), MaxAbsScaler(), 
-            RobustScaler(), PowerTransformer(), QuantileTransformer(), 
-            Normalizer()
-    ]
-
-    scaler_name = ["standardscaler", "minmaxscaler", "maxabsscaler", 
-            "robustscaler", "powertransformer", "quantiletransformer", 
-            "normalizer"
-    ]
-
-    init = [
-        "k-means++",
-        "random",
-        "pca"
-    ]
-
-    # metric titles
-    report_columns = [
-        "method",
-        "time",
-        "inertia",
-        "homegeneity_score",
-        "completeness_score",
-        "v_measure_score",
-        "adjusted_rand_score",
-        "adj_mutual_info_score",
-        "silhouette_score",
-    ]
-
-    df = pd.DataFrame([], columns=report_columns)
-    
-    for i in init:
-        # print(i)
-        if i=="pca":
-            pca = PCA(n_components=n_clusters).fit(data)
-            kmeans = KMeans(init=pca.components_, n_clusters=n_clusters, n_init=4, random_state=0)
-            estimator = make_pipeline(scaler_list[scaler-1], kmeans).fit(data)
-
-        else:
-            kmeans = KMeans(init=i, n_clusters=n_clusters, n_init=1, random_state=0)
-            estimator = make_pipeline(scaler_list[scaler-1], kmeans).fit(data)
-        
-        fit_time = time() - t0
-        results = [f"{i}-{scaler_name[scaler-1]}", fit_time, estimator[-1].inertia_]
-
-        # Define the metrics which require only the true labels and estimator
-        # labels
-        clustering_metrics = [
-            metrics.homogeneity_score,
-            metrics.completeness_score,
-            metrics.v_measure_score,
-            metrics.adjusted_rand_score,
-            metrics.adjusted_mutual_info_score,
-        ]
-        results += [m(labels, estimator[-1].labels_) for m in clustering_metrics]
-
-        # The silhouette score requires the full dataset
-        results += [
-            metrics.silhouette_score(
-                data,
-                estimator[-1].labels_,
-                metric="euclidean",
-                sample_size=300,
-            )
-        ]
-
-        # df_to_append = pd.DataFrame(results)
-
-        df_length = len(df)
-        df.loc[df_length] = results
-        
-        # df_final = pd.concat([df, df_to_append], axis=1)
-
-    '''formatter_clust_metric_names = (
-        "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}"
-    )
-    print(formatter_clust_metric_names.format(*report_columns))
-
-    # Show the results
-    formatter_result = (
-        "{:9s}\t{:.3f}s\t{:.0f}\t{:.3f}\t{:.3f}\t{:.3f}\t{:.3f}\t{:.3f}\t{:.3f}"
-    )
-    print(formatter_result.format(*results))'''
 
     return df
 
