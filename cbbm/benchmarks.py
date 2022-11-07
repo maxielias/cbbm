@@ -1,6 +1,3 @@
-from time import time
-import time
-# from wsgiref.simple_server import demo_app
 import pandas as pd
 import numpy as np
 from sklearn import metrics
@@ -18,7 +15,10 @@ from sklearn.linear_model import SGDOneClassSVM
 from sklearn.kernel_approximation import Nystroem
 from kneed import KneeLocator, DataGenerator
 from matplotlib import pyplot as plt
+from yellowbrick.cluster import KElbowVisualizer
+from yellowbrick.cluster import SilhouetteVisualizer
 import seaborn as sns
+import matplotlib.cm as cm
 
 
 def find_and_drop_correlated_features(data, labels_col:str, threshold:float, drop:bool=False, plot:bool=False):
@@ -50,6 +50,7 @@ def find_and_drop_correlated_features(data, labels_col:str, threshold:float, dro
         data = pd.concat([df_labels, data[selected_columns]], axis=1)
         print(f"The following columns were dropped: {[d for d in data_cols if d not in selected_columns]}")
 
+    plt.clf()
     return df_corr, data
 
 
@@ -269,7 +270,7 @@ def drop_outliers(data, labels_col:str, scaler:int, algorithm:int, drop:bool=Tru
     scaling_methods = [
         ("Standard Scaler", StandardScaler()),
         ("MaxAbs Scaler", MaxAbsScaler()),
-        ("Normalizer", Normalizer()),
+        ("Normalizer", Normalizer(norm="max")),
         ("Power Transformer", PowerTransformer(method="yeo-johnson")),
         ("Robust Scaler", RobustScaler(with_scaling=False)),
         ("Quantile Transformer", QuantileTransformer(output_distribution="normal", n_quantiles=10)),
@@ -301,10 +302,10 @@ def drop_outliers(data, labels_col:str, scaler:int, algorithm:int, drop:bool=Tru
             "Local Outlier Factor",
             LocalOutlierFactor(contamination=0.1, n_neighbors=30),
         ),
-        (
+        '''(
             "DBSCAN",
             DBSCAN(),
-        )
+        )'''
     ]
 
     if scaler>0:
@@ -348,13 +349,20 @@ def drop_outliers(data, labels_col:str, scaler:int, algorithm:int, drop:bool=Tru
     df = pd.concat([df_labels, df_data], axis=1)
     
     if drop==True:
-        print(f"Droppped the following samples: {list(df[labels_col].iloc[outliers_list_idx])}")
-        df = df.iloc[inliers_list_idx]
+        try:
+            print(f"Droppped the following samples: {list(df[labels_col].iloc[outliers_list_idx])}")
+            df = df.iloc[inliers_list_idx]
+        except Exception as e:
+            print(e)
+            print("Error: no outliers dropped")
+            pass
+    
+    df = df.reset_index().drop(columns="index")
 
     return df
 
 
-def elbow_optimal_k(data, labels_col:str, model:str, params:dict, max_k:int, scaler:int=0, plot:bool=False):
+def optimal_k(data, labels_col:str, model:str, params:dict, max_k:int, scaler:int=0, drop:bool=False, algorithm:int=0, plot:bool=False):
     """
 
     -------------------------------------------------------------------
@@ -380,6 +388,10 @@ def elbow_optimal_k(data, labels_col:str, model:str, params:dict, max_k:int, sca
     5) Robust Scaler
     6) Quantile Transformer\n
     """
+    
+    if drop:
+        data = drop_outliers(data, labels_col=labels_col, scaler=scaler, algorithm=algorithm, drop=True)
+    
     labels = [l for l in data.loc[:,labels_col]]
     data_cols = [c for c in data.columns]
     data_cols.remove(labels_col)
@@ -396,6 +408,37 @@ def elbow_optimal_k(data, labels_col:str, model:str, params:dict, max_k:int, sca
         ("Power Transformer", PowerTransformer(method="yeo-johnson")),
         ("Robust Scaler", RobustScaler(with_scaling=False)),
         ("Quantile Transformer", QuantileTransformer(output_distribution="normal", n_quantiles=10)),
+    ]
+
+    anomaly_algorithms = [
+        ("Empirical Covariance", EllipticEnvelope(support_fraction=1.0, contamination=0.1)),
+        ("Robust Covariance", EllipticEnvelope(contamination=0.1)),
+        ("One-Class SVM", svm.OneClassSVM(nu=0.1, kernel="rbf", gamma=0.1)),
+        (
+            "One-Class SVM (SGD)",
+            make_pipeline(
+                Nystroem(gamma=0.1, random_state=42, n_components=data.shape[1]),
+                SGDOneClassSVM(
+                    nu=0.1,
+                    shuffle=True,
+                    fit_intercept=True,
+                    random_state=42,
+                    tol=1e-6,
+                ),
+            ),
+        ),
+        (
+            "Isolation Forest",
+            IsolationForest(random_state=42),
+        ),
+        (
+            "Local Outlier Factor",
+            LocalOutlierFactor(contamination=0.1, n_neighbors=30),
+        ),
+        '''(
+            "DBSCAN",
+            DBSCAN(),
+        )'''
     ]
 
     # metric titles
@@ -415,9 +458,9 @@ def elbow_optimal_k(data, labels_col:str, model:str, params:dict, max_k:int, sca
     ]
 
     model_dict = {
-        "kmeans": KMeans(),
-        "kmedoids": KMedoids(),
-        "minibatch_kmeans": MiniBatchKMeans(),
+        "kmeans": ("KMeans", KMeans()),
+        "kmedoids": ("KMedoids", KMedoids()),
+        "minibatch_kmeans": ("MiniBatchKMeans", MiniBatchKMeans()),
     }
 
     df = pd.DataFrame([], columns=report_columns)
@@ -426,22 +469,30 @@ def elbow_optimal_k(data, labels_col:str, model:str, params:dict, max_k:int, sca
 
         params["n_clusters"] = n
 
-        model_pipeline = model_dict[model]
+        model_pipeline = model_dict[model][1]
+        model_name = model_dict[model][0]
 
         model_pipeline = model_pipeline.set_params(**params)
 
-        if scaler==0:
-            scaler_name = "None"
-            estimator = make_pipeline(model_pipeline).fit(data)
+        if scaler==0 or drop==True:
+            try:
+                scaler_name = "None"
+                estimator = make_pipeline(model_pipeline).fit(data)
+                # predict_estimator = make_pipeline(model_pipeline).predict(data)
+
+            except Exception as e:
+                print(e)
+                print("Too many outliers.")
+                return df
 
         else:
             scaler_name = scaling_methods[scaler-1][0]
-            scaler = scaling_methods[scaler-1][1]
-            estimator = make_pipeline(scaler, model_pipeline).fit(data)
+            scaler_pipeline = scaling_methods[scaler-1][1]
+            estimator = make_pipeline(scaler_pipeline, model_pipeline).fit(data)
 
-        # print(estimator)
-        
-        results = [f'{model}(k={n})-{scaler_name}', n, estimator[-1].inertia_]
+        # print(estimator[-1].labels_)
+        # print(estimator[-1].cluster_centers_)
+        results = [f'{model_name}(k={n})-{scaler_name}', n, estimator[-1].inertia_]
 
         # Define the metrics which require only the true labels and estimator
         # labels
@@ -455,18 +506,23 @@ def elbow_optimal_k(data, labels_col:str, model:str, params:dict, max_k:int, sca
         results += [m(labels, estimator[-1].labels_) for m in clustering_metrics]
 
         # The silhouette score requires the full dataset
-        results += [
-            metrics.silhouette_score(
-                data,
-                estimator[-1].labels_,
-                metric="euclidean",
-                sample_size=300,
-            ),
-            metrics.silhouette_samples(
-                data,
-                estimator[-1].labels_
-            )
-        ]
+        try:
+            results += [
+                metrics.silhouette_score(
+                    data,
+                    estimator[-1].labels_,
+                    metric="euclidean",
+                    sample_size=300,
+                ),
+                metrics.silhouette_samples(
+                    data,
+                    estimator[-1].labels_
+                )
+            ]
+        except Exception as e:
+            results += [0, 0]
+            print(e)
+            continue
 
         results += [
             metrics.davies_bouldin_score(
@@ -485,6 +541,165 @@ def elbow_optimal_k(data, labels_col:str, model:str, params:dict, max_k:int, sca
         df_length = len(df)
         df.loc[df_length] = results
 
+    silhouette_optimal_k = df["k"].loc[df["silhouette_score"].idxmax()]
+    calinski_harabasz_optimal_k = df["k"].loc[df["calinski_harabasz_score"].idxmax()]
+
+    if plot:
+
+        kelbow_model = KElbowVisualizer(model_pipeline, k=(2, max_k))
+        kelbow_model.fit(data)
+        plt.show()
+        plt.clf()
+
+        elbow = kelbow_model.elbow_value_
+
+        predicted_k = pd.DataFrame({"sample":labels})
+
+        for tup in [("Elbow Method", elbow), ("Silhouette Method", silhouette_optimal_k), ("Calinski Harabsz Method", calinski_harabasz_optimal_k)]: 
+
+            k_optimal = tup[1]
+            method_name = tup[0]
+            # Create a subplot with 1 row and 2 columns
+            fig, (ax1, ax2) = plt.subplots(1, 2)
+            fig.set_size_inches(18, 7)
+
+            # The 1st subplot is the silhouette plot
+            # The silhouette coefficient can range from -1, 1 but in this example all
+            # lie within [-0.1, 1]
+            ax1.set_xlim([-1, 1])
+            # The (n_clusters+1)*10 is for inserting blank space between silhouette
+            # plots of individual clusters, to demarcate them clearly.
+            ax1.set_ylim([0, len(data) + (k_optimal + 1) * 10])
+
+            # Initialize the clusterer with n_clusters value
+            # and a random generator seed of 10 for reproducibility.
+
+            params["n_clusters"] = k_optimal
+            model_pipeline = model_dict[model][1]
+            model_name = model_dict[model][0]
+            model_pipeline = model_pipeline.set_params(**params)
+            
+            if scaler==0:
+                estimator = make_pipeline(model_pipeline).fit(data)
+
+            else:
+                scaler_name = scaling_methods[scaler-1][0]
+                scaler_pipeline = scaling_methods[scaler-1][1]
+                estimator = make_pipeline(scaler_pipeline, model_pipeline).fit(data)
+
+            predict_k = estimator.predict(data)
+            predicted_k = pd.concat([predicted_k, pd.DataFrame({method_name:predict_k})], axis=1)
+
+            # The silhouette_score gives the average value for all the samples.
+            # This gives a perspective into the density and separation of the formed
+            # clusters
+
+            silhouette_avg = df["silhouette_score"].loc[df["k"]==k_optimal].item()
+            # print(silhouette_avg)
+            '''print(
+                "For n_clusters =",
+                k_optimal,
+                "The average silhouette_score is :",
+                silhouette_avg,
+            )'''
+
+            # Compute the silhouette scores for each sample
+            sample_silhouette_values = df["silhouette_samples"].loc[df["k"]==k_optimal].item()
+
+            y_lower = 10
+
+            list_colors = list()
+
+            for i in range(k_optimal):
+                
+                # Aggregate the silhouette scores for samples belonging to
+                # cluster i, and sort them
+                ith_cluster_silhouette_values = sample_silhouette_values[estimator[-1].labels_==i]
+                ith_cluster_silhouette_values.sort()
+
+                size_cluster_i = ith_cluster_silhouette_values.shape[0]
+                y_upper = y_lower + size_cluster_i
+
+                color = cm.nipy_spectral(float(i) / k_optimal)
+                list_colors.append(color)
+
+                ax1.fill_betweenx(
+                    np.arange(y_lower, y_upper),
+                    0,
+                    ith_cluster_silhouette_values,
+                    facecolor=color,
+                    edgecolor=color,
+                    alpha=0.7,
+                )
+                
+                # Label the silhouette plots with their cluster numbers at the middle
+                ax1.text(-0.05, y_lower + 0.5 * size_cluster_i, str(i))
+
+                # Compute the new y_lower for next plot
+                y_lower = y_upper + 10  # 10 for the 0 samples
+
+            ax1.set_title("The silhouette plot for the various clusters.")
+            ax1.set_xlabel("The silhouette coefficient values")
+            ax1.set_ylabel("Cluster label")
+
+            # The vertical line for average silhouette score of all the values
+            ax1.axvline(x=silhouette_avg, color="red", linestyle="--")
+
+            ax1.set_yticks([])  # Clear the yaxis labels / ticks
+            ax1.set_xticks([r/10 for r in range(-10,10,2)])
+
+            data_pca = PCA(n_components=2).fit_transform(data)
+            
+            # 2nd Plot showing the actual clusters formed
+            colors = cm.nipy_spectral(estimator[-1].labels_.astype(float) / k_optimal)
+            ax2.scatter(
+                data_pca[:, 0], data_pca[:, 1], marker=".", s=30, lw=1, alpha=0.7, c=colors, edgecolor=colors
+            )
+
+            # Labeling the clusters
+            centers = estimator[-1].cluster_centers_
+            # print(centers)
+
+            centers_pca = PCA(n_components=2).fit_transform(centers)
+
+            # Draw white circles at cluster centers
+            ax2.scatter(
+                centers_pca[:, 0],
+                centers_pca[:, 1],
+                marker="o",
+                color=list_colors,
+                alpha=1,
+                s=200,
+                edgecolor=list_colors,
+            )
+
+            for i, c in enumerate(centers_pca):
+                ax2.scatter(c[0], c[1], marker="$%d$" % i, alpha=1, s=75, color="w", edgecolor="w")
+                ax2.annotate(f"{round(c[0], 2)}, {round(c[1], 2)}", (c[0]+0.07, c[1]+0.07))
+
+            ax2.set_title("The visualization of the clustered data.")
+            ax2.set_xlabel("Feature space for the 1st feature")
+            ax2.set_ylabel("Feature space for the 2nd feature")
+
+            plt.suptitle(
+                f"Silhouette analysis of {method_name} for {model_name} with {k_optimal} clusters.\n Sample data scaled with {scaler_name} using {anomaly_algorithms[algorithm][0]} for outlier detection",
+                fontsize=14,
+                fontweight="bold",
+            )
+
+            plt.savefig(f"graph/{method_name}-{model_name}-{k_optimal}-{scaler_name}-{anomaly_algorithms[algorithm][0]}.png") # , bbox_inches='tight')
+
+        print(predicted_k)
+        predicted_k.to_csv(f"output/{model_name}-{k_optimal}-{scaler_name}-{anomaly_algorithms[algorithm][0]}.csv", sep=",", index=False)
+        
+        plt.show()
+        plt.clf()
+
+        print(f"Elbow Method optimal K is {elbow}")
+
+    print(f"Silhouette Method optimal K is {silhouette_optimal_k}")
+    print(f"Calinski Harabasz Method optimal K is {calinski_harabasz_optimal_k}")
+    
     return df
 
 
