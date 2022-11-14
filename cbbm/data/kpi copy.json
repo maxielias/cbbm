@@ -335,7 +335,26 @@
 
         "p": "4"   
     },
+    
+    "loan_avg_segment_asset":
+    {
+        "num": 
+        {
+            "n_acc": ["10399999999"],
+            "sign": [1]
+        },
 
+        "den": 
+        {
+            "n_acc": ["10000000000"],
+            "sign": [1]
+        },
+
+        "details": "Total wholesale debt (as a % of assets)",
+
+        "p": "2"
+    },
+    
     "business_loans_assets":
     {
         "num": 
