@@ -13,12 +13,24 @@ from sklearn.ensemble import IsolationForest
 from sklearn.neighbors import LocalOutlierFactor, NearestNeighbors
 from sklearn.linear_model import SGDOneClassSVM
 from sklearn.kernel_approximation import Nystroem
-# from kneed import KneeLocator, DataGenerator
+from kneed import KneeLocator, DataGenerator
 from matplotlib import pyplot as plt
 from yellowbrick.cluster import KElbowVisualizer
 # from yellowbrick.cluster import SilhouetteVisualizer
 import seaborn as sns
 import matplotlib.cm as cm
+
+
+def drop_observations(data, col:str, drop_list:list):
+    data = data[~data[col].isin(drop_list)]
+
+    return data
+
+
+def drop_features(data, col:str, drop_list:list):
+    data = data[~data[col].isin(drop_list)]
+
+    return data
 
 
 def find_and_drop_correlated_features(data, labels_col:str, threshold:float, drop:bool=False, plot:bool=False):
@@ -362,7 +374,7 @@ def drop_outliers(data, labels_col:str, scaler:int, algorithm:int, drop:bool=Tru
     return df
 
 
-def optimal_k(data, labels_col:str, model:str, params:dict, max_k:int, scaler:int=0, threshold:float=0, drop:bool=False, algorithm:int=0, plot:bool=False):
+def optimal_k(data, labels_col:str, model:str, params:dict, max_k:int, scaler:int=0, threshold:float=0, drop:bool=False, algorithm:int=0, plot:bool=False, min_k:int=2, min_max_items:list=[1,100]):
     """
 
     -------------------------------------------------------------------
@@ -398,7 +410,7 @@ def optimal_k(data, labels_col:str, model:str, params:dict, max_k:int, scaler:in
 
     data = data.loc[:,data_cols].to_numpy()
 
-    n_clusters = range(2, max_k+1)
+    n_clusters = range(min_k, max_k+1)
 
     # More scaling methods can be added to be tested
     scaling_methods = [
@@ -546,184 +558,195 @@ def optimal_k(data, labels_col:str, model:str, params:dict, max_k:int, scaler:in
 
     if plot:
 
-        kelbow_model = KElbowVisualizer(model_pipeline, k=(2, max_k))
-        kelbow_model.fit(data)
-        plt.show()
-        plt.clf()
-
         try:
+            kelbow_model = KElbowVisualizer(model_pipeline, k=(min_k, max_k))
+            kelbow_model.fit(data)
+            plt.show()
+            plt.clf()
             elbow = kelbow_model.elbow_value_
+            print(elbow)
             metrics_list = [
                             ("Elbow Method", elbow, "silhouette_score"), 
                             ("Silhouette Method", silhouette_optimal_k, "silhouette_score"), 
                             ("Calinski Harabsz Method", calinski_harabasz_optimal_k, "calinski_harabasz_score")
             ]
 
-        except Exception as e:
-            metrics_list = [("Silhouette Method", silhouette_optimal_k), ("Calinski Harabsz Method", calinski_harabasz_optimal_k)]
-            print(e)
+        except:
+            metrics_list = [("Silhouette Method", silhouette_optimal_k, "silhouette_score"), 
+                            ("Calinski Harabsz Method", calinski_harabasz_optimal_k, "calinski_harabasz_score")]
+            # print(e)
             print("No elbow or knee")
+            print(metrics_list)
             pass
 
         predicted_k = pd.DataFrame({"sample":labels})
 
         for i, tup in enumerate(metrics_list):
+            
+            if tup[1] and tup[1] >= min_k:
 
-            # print(tup[1])
-            print(i)
-            # print(metrics_list[0:i])
+                k_optimal = tup[1]
+                method_name = tup[0]
+                print(f"{method_name} with {k_optimal} clusters")
+                score = df["silhouette_score"].loc[df["k"]==k_optimal].item()
+                print(score)
 
-            k_optimal = tup[1]
-            print(k_optimal)
-            method_name = tup[0]
-            score = df["silhouette_score"].loc[df["k"]==k_optimal].item()
-            print(score)
+                if tup[1] in [k[1] for k in metrics_list[0:i]]:
+                    print("Repeated number of clusters")
 
-            if tup[1] in [k[1] for k in metrics_list[0:i]]:
-                print("Repeated number of clusters")
+                elif score > threshold:
 
-            elif score > threshold:
+                    # Create a subplot with 1 row and 2 columns
+                    fig, (ax1, ax2) = plt.subplots(1, 2)
+                    fig.set_size_inches(18, 7)
 
-                # Create a subplot with 1 row and 2 columns
-                fig, (ax1, ax2) = plt.subplots(1, 2)
-                fig.set_size_inches(18, 7)
+                    # The 1st subplot is the silhouette plot
+                    # The silhouette coefficient can range from -1, 1 but in this example all
+                    # lie within [-0.1, 1]
+                    ax1.set_xlim([-1, 1])
+                    # The (n_clusters+1)*10 is for inserting blank space between silhouette
+                    # plots of individual clusters, to demarcate them clearly.
+                    ax1.set_ylim([0, len(data) + (k_optimal + 1) * 10])
 
-                # The 1st subplot is the silhouette plot
-                # The silhouette coefficient can range from -1, 1 but in this example all
-                # lie within [-0.1, 1]
-                ax1.set_xlim([-1, 1])
-                # The (n_clusters+1)*10 is for inserting blank space between silhouette
-                # plots of individual clusters, to demarcate them clearly.
-                ax1.set_ylim([0, len(data) + (k_optimal + 1) * 10])
+                    # Initialize the clusterer with n_clusters value
+                    # and a random generator seed of 10 for reproducibility.
 
-                # Initialize the clusterer with n_clusters value
-                # and a random generator seed of 10 for reproducibility.
-
-                params["n_clusters"] = k_optimal
-                model_pipeline = model_dict[model][1]
-                model_name = model_dict[model][0]
-                model_pipeline = model_pipeline.set_params(**params)
-                
-                if scaler==0:
-                    estimator = make_pipeline(model_pipeline).fit(data)
-
-                else:
-                    scaler_name = scaling_methods[scaler-1][0]
-                    scaler_pipeline = scaling_methods[scaler-1][1]
-                    estimator = make_pipeline(scaler_pipeline, model_pipeline).fit(data)
-
-                predict_k = estimator.predict(data)
-                predicted_k = pd.concat([predicted_k, pd.DataFrame({method_name:predict_k})], axis=1)
-
-                # The silhouette_score gives the average value for all the samples.
-                # This gives a perspective into the density and separation of the formed
-                # clusters
-
-                silhouette_avg = df["silhouette_score"].loc[df["k"]==k_optimal].item()
-                # print(silhouette_avg)
-                '''print(
-                    "For n_clusters =",
-                    k_optimal,
-                    "The average silhouette_score is :",
-                    silhouette_avg,
-                )'''
-
-                # Compute the silhouette scores for each sample
-                sample_silhouette_values = df["silhouette_samples"].loc[df["k"]==k_optimal].item()
-
-                y_lower = 10
-
-                list_colors = list()
-
-                for i in range(k_optimal):
+                    params["n_clusters"] = k_optimal
+                    model_pipeline = model_dict[model][1]
+                    model_name = model_dict[model][0]
+                    model_pipeline = model_pipeline.set_params(**params)
                     
-                    # Aggregate the silhouette scores for samples belonging to
-                    # cluster i, and sort them
-                    ith_cluster_silhouette_values = sample_silhouette_values[estimator[-1].labels_==i]
-                    ith_cluster_silhouette_values.sort()
+                    if scaler==0:
+                        estimator = make_pipeline(model_pipeline).fit(data)
 
-                    size_cluster_i = ith_cluster_silhouette_values.shape[0]
-                    y_upper = y_lower + size_cluster_i
+                    else:
+                        scaler_name = scaling_methods[scaler-1][0]
+                        scaler_pipeline = scaling_methods[scaler-1][1]
+                        estimator = make_pipeline(scaler_pipeline, model_pipeline).fit(data)
 
-                    color = cm.nipy_spectral(float(i) / k_optimal)
-                    list_colors.append(color)
+                    predict_k = estimator.predict(data)
+                    predicted_k = pd.concat([predicted_k, pd.DataFrame({method_name:predict_k})], axis=1)
 
-                    ax1.fill_betweenx(
-                        np.arange(y_lower, y_upper),
-                        0,
-                        ith_cluster_silhouette_values,
-                        facecolor=color,
-                        edgecolor=color,
-                        alpha=0.7,
-                    )
-                    
-                    # Label the silhouette plots with their cluster numbers at the middle
-                    ax1.text(-0.05, y_lower + 0.5 * size_cluster_i, str(i))
+                    # predicted_count = [p for p in predicted_k[method_name].value_counts()]
+                    print(all([p for p in predicted_k[method_name].value_counts() if 20 > p]))
+                    print([predicted_k[method_name].value_counts()])
 
-                    # Compute the new y_lower for next plot
-                    y_lower = y_upper + 10  # 10 for the 0 samples
+                    if True: # all([p for p in predicted_k[method_name].value_counts() if min_max_items[1] > p > min_max_items[0]])==True: # p for p in predicted_count if min_max_items[1] > p > min_max_items[0])==True:
+                    # The silhouette_score gives the average value for all the samples.
+                    # This gives a perspective into the density and separation of the formed
+                    # clusters
 
-                ax1.set_title("The silhouette plot for the various clusters.")
-                ax1.set_xlabel("The silhouette coefficient values")
-                ax1.set_ylabel("Cluster label")
+                        silhouette_avg = df["silhouette_score"].loc[df["k"]==k_optimal].item()
+                        # print(silhouette_avg)
+                        '''print(
+                            "For n_clusters =",
+                            k_optimal,
+                            "The average silhouette_score is :",
+                            silhouette_avg,
+                        )'''
 
-                # The vertical line for average silhouette score of all the values
-                ax1.axvline(x=silhouette_avg, color="red", linestyle="--")
+                        # Compute the silhouette scores for each sample
+                        sample_silhouette_values = df["silhouette_samples"].loc[df["k"]==k_optimal].item()
 
-                ax1.set_yticks([])  # Clear the yaxis labels / ticks
-                ax1.set_xticks([r/10 for r in range(-10,10,2)])
+                        y_lower = 10
 
-                data_pca = PCA(n_components=2).fit_transform(data)
-                
-                # 2nd Plot showing the actual clusters formed
-                colors = cm.nipy_spectral(estimator[-1].labels_.astype(float) / k_optimal)
-                ax2.scatter(
-                    data_pca[:, 0], data_pca[:, 1], marker=".", s=30, lw=1, alpha=0.7, c=colors, edgecolor=colors
-                )
+                        list_colors = list()
 
-                # Labeling the clusters
-                centers = estimator[-1].cluster_centers_
-                # print(centers)
+                        for i in range(k_optimal):
+                            
+                            # Aggregate the silhouette scores for samples belonging to
+                            # cluster i, and sort them
+                            ith_cluster_silhouette_values = sample_silhouette_values[estimator[-1].labels_==i]
+                            ith_cluster_silhouette_values.sort()
 
-                centers_pca = PCA(n_components=2).fit_transform(centers)
+                            size_cluster_i = ith_cluster_silhouette_values.shape[0]
+                            y_upper = y_lower + size_cluster_i
 
-                # Draw white circles at cluster centers
-                ax2.scatter(
-                    centers_pca[:, 0],
-                    centers_pca[:, 1],
-                    marker="o",
-                    color=list_colors,
-                    alpha=1,
-                    s=200,
-                    edgecolor=list_colors,
-                )
+                            color = cm.nipy_spectral(float(i) / k_optimal)
+                            list_colors.append(color)
 
-                for i, c in enumerate(centers_pca):
-                    ax2.scatter(c[0], c[1], marker="$%d$" % i, alpha=1, s=75, color="w", edgecolor="w")
-                    ax2.annotate(f"{round(c[0], 2)}, {round(c[1], 2)}", (c[0]+0.07, c[1]+0.07))
+                            ax1.fill_betweenx(
+                                np.arange(y_lower, y_upper),
+                                0,
+                                ith_cluster_silhouette_values,
+                                facecolor=color,
+                                edgecolor=color,
+                                alpha=0.7,
+                            )
+                            
+                            # Label the silhouette plots with their cluster numbers at the middle
+                            ax1.text(-0.05, y_lower + 0.5 * size_cluster_i, str(i))
 
-                ax2.set_title("The visualization of the clustered data.")
-                ax2.set_xlabel("Feature space for the 1st feature")
-                ax2.set_ylabel("Feature space for the 2nd feature")
+                            # Compute the new y_lower for next plot
+                            y_lower = y_upper + 10  # 10 for the 0 samples
 
-                plt.suptitle(
-                    f"Silhouette analysis of {method_name} for {model_name} with {k_optimal} clusters.\n Sample data scaled with {scaler_name} using {anomaly_algorithms[algorithm][0]} for outlier detection",
-                    fontsize=14,
-                    fontweight="bold",
-                )
+                        ax1.set_title("The silhouette plot for the various clusters.")
+                        ax1.set_xlabel("The silhouette coefficient values")
+                        ax1.set_ylabel("Cluster label")
 
-                plt.savefig(f"graph/{method_name}-{model_name}-{k_optimal}-{scaler_name}-{anomaly_algorithms[algorithm][0]}.png") # , bbox_inches='tight')
+                        # The vertical line for average silhouette score of all the values
+                        ax1.axvline(x=silhouette_avg, color="red", linestyle="--")
 
-        if len(predicted_k.columns)>1:
-            predicted_k.to_csv(f"output/{model_name}-{[k[1] for k in metrics_list[0:i]]}-{scaler_name}-{anomaly_algorithms[algorithm][0]}.csv", sep=",", index=False)
-        
-        plt.show()
-        plt.clf()
+                        ax1.set_yticks([])  # Clear the yaxis labels / ticks
+                        ax1.set_xticks([r/10 for r in range(-10,10,2)])
 
-        print(f"Elbow Method optimal K is {elbow}  with score of {1}")
+                        data_pca = PCA(n_components=2).fit_transform(data)
+                        
+                        # 2nd Plot showing the actual clusters formed
+                        colors = cm.nipy_spectral(estimator[-1].labels_.astype(float) / k_optimal)
+                        ax2.scatter(
+                            data_pca[:, 0], data_pca[:, 1], marker=".", s=30, lw=1, alpha=0.7, c=colors, edgecolor=colors
+                        )
 
-    print(f"Silhouette Method optimal K is {silhouette_optimal_k} with score of {1}")
-    print(f"Calinski Harabasz Method optimal K is {calinski_harabasz_optimal_k} with score of {1}")
+                        # Labeling the clusters
+                        centers = estimator[-1].cluster_centers_
+                        # print(centers)
+
+                        centers_pca = PCA(n_components=2).fit_transform(centers)
+
+                        # Draw white circles at cluster centers
+                        ax2.scatter(
+                            centers_pca[:, 0],
+                            centers_pca[:, 1],
+                            marker="o",
+                            color=list_colors,
+                            alpha=1,
+                            s=200,
+                            edgecolor=list_colors,
+                        )
+
+                        for i, c in enumerate(centers_pca):
+                            ax2.scatter(c[0], c[1], marker="$%d$" % i, alpha=1, s=75, color="w", edgecolor="w")
+                            ax2.annotate(f"{round(c[0], 2)}, {round(c[1], 2)}", (c[0]+0.07, c[1]+0.07))
+
+                        ax2.set_title("The visualization of the clustered data.")
+                        ax2.set_xlabel("Feature space for the 1st feature")
+                        ax2.set_ylabel("Feature space for the 2nd feature")
+
+                        plt.suptitle(
+                            f"Silhouette analysis of {method_name} for {model_name} with {k_optimal} clusters.\n Sample data scaled with {scaler_name} using {anomaly_algorithms[algorithm][0]} for outlier detection",
+                            fontsize=14,
+                            fontweight="bold",
+                        )
+
+                        plt.savefig(f"graph/{method_name}-{model_name}-{k_optimal}-{scaler_name}-{anomaly_algorithms[algorithm][0]}.png") # , bbox_inches='tight')
+
+                if len(predicted_k.columns)>1:
+                    predicted_k.to_csv(f"output/{method_name}-{model_name}-{[k[1] for k in metrics_list[0:i]]}-{scaler_name}-{anomaly_algorithms[algorithm][0]}.csv", sep=",", index=False)
+            
+            plt.show()
+            plt.clf()
+
+            try:
+                silhouette_score_elbow = df["silhouette_score"].loc[df["k"]==elbow].item()
+                print(f"Elbow Method optimal K is {elbow}  with score of {silhouette_score_elbow}")
+            except:
+                print("No elbow or knee found")
+
+    silhouette_score_sm = df["silhouette_score"].loc[df["k"]==silhouette_optimal_k].item()
+    silhouette_score_ch = df["silhouette_score"].loc[df["k"]==calinski_harabasz_optimal_k].item()
+    print(f"Silhouette Method optimal K is {silhouette_optimal_k} with score of {silhouette_score_sm}")
+    print(f"Calinski Harabasz Method optimal K is {calinski_harabasz_optimal_k} with score of {silhouette_score_ch}")
     
     return df
 
