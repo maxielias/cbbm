@@ -1203,6 +1203,19 @@ optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*"
 
 [[package]]
+name = "sklearn-extensions"
+version = "0.0.2"
+description = "A bundle of 3rd party extensions to scikit-learn"
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+numpy = ">=1.9.0"
+scikit-learn = ">=0.15"
+scipy = ">=0.16.0"
+
+[[package]]
 name = "sniffio"
 version = "1.2.0"
 description = "Sniff out which async library your code is running under"
@@ -1368,7 +1381,7 @@ scipy = ">=1.0.0"
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.10,<3.11"
-content-hash = "f2bd3287cdfe70c6d9ee4909207823991d8d329a4bbac2e40a1b501db6a97a9a"
+content-hash = "fd887dfb06ce5dc83729a186ccbd8f05bbe7e50ca21edb53e35cf4303a948c77"
 
 [metadata.files]
 anyio = [
@@ -2253,6 +2266,9 @@ setuptools-scm = [
 six = [
     {file = "six-1.16.0-py2.py3-none-any.whl", hash = "sha256:8abb2f1d86890a2dfb989f9a77cfcfd3e47c2a354b01111771326f8aa26e0254"},
     {file = "six-1.16.0.tar.gz", hash = "sha256:1e61c37477a1626458e36f7b1d82aa5c9b094fa4802892072e49de9c60c4c926"},
+]
+sklearn-extensions = [
+    {file = "sklearn-extensions-0.0.2.tar.gz", hash = "sha256:5891e28f87d1a188f02e371c38ee6c5b8162e200177503922e7635dedd0479a9"},
 ]
 sniffio = [
     {file = "sniffio-1.2.0-py3-none-any.whl", hash = "sha256:471b71698eac1c2112a40ce2752bb2f4a4814c22a54a3eed3676bc0f5ca9f663"},

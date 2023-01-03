@@ -19,6 +19,7 @@ from yellowbrick.cluster import KElbowVisualizer
 # from yellowbrick.cluster import SilhouetteVisualizer
 import seaborn as sns
 import matplotlib.cm as cm
+import joblib
 
 
 def drop_observations(data, col:str, drop_list:list):
@@ -91,7 +92,7 @@ def benchmark_scaling_and_oultlier_methods(data, labels_col:str, plot:bool=False
     scaling_methods = [
         ("Standard Scaler", StandardScaler()),
         ("MaxAbs Scaler", MaxAbsScaler()),
-        ("Normalizer", Normalizer()),
+        ("Normalizer", Normalizer(norm="max")),
         ("Power Transformer", PowerTransformer(method="yeo-johnson")),
         ("Robust Scaler", RobustScaler(with_scaling=False)),
         ("Quantile Transformer", QuantileTransformer(output_distribution="normal", n_quantiles=10)),
@@ -416,7 +417,7 @@ def optimal_k(data, labels_col:str, model:str, params:dict, max_k:int, scaler:in
     scaling_methods = [
         ("Standard Scaler", StandardScaler()),
         ("MaxAbs Scaler", MaxAbsScaler()),
-        ("Normalizer", Normalizer()),
+        ("Normalizer", Normalizer(norm="max")),
         ("Power Transformer", PowerTransformer(method="yeo-johnson")),
         ("Robust Scaler", RobustScaler(with_scaling=False)),
         ("Quantile Transformer", QuantileTransformer(output_distribution="normal", n_quantiles=10)),
@@ -626,6 +627,8 @@ def optimal_k(data, labels_col:str, model:str, params:dict, max_k:int, scaler:in
 
                     predict_k = estimator.predict(data)
                     predicted_k = pd.concat([predicted_k, pd.DataFrame({method_name:predict_k})], axis=1)
+
+                    joblib.dump(model_pipeline, f"models/{method_name}-{model_name}-{[k[1] for k in metrics_list[0:i]]}-{scaler_name}-{anomaly_algorithms[algorithm][0]}.pkl")  
 
                     # predicted_count = [p for p in predicted_k[method_name].value_counts()]
                     print(all([p for p in predicted_k[method_name].value_counts() if 20 > p]))
