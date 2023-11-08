@@ -20,6 +20,7 @@ pyopencl = "^2022.2.3"
 yellowbrick = "^1.5"
 kneed = "^0.8.1"
 sklearn-extensions = "^0.0.2"
+selenium = "^4.15.2"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
